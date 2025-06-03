@@ -1,8 +1,10 @@
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use axum::{
+    extract::Extension,
     routing::get,
-    Router,
+    Json,
+    Router
 };
 use tracing::{info, Level};
 use tracing_subscriber; 
@@ -23,7 +25,8 @@ async fn root() -> &'static str {
 
 // handler for get posts
 async fn get_posts(
-    Extension(pool): Extension<Pool<Postgres>>
+    Extension(pool): Extension<Pool<Postgres>>,
+    Path(id): Path<i32>,
 ) -> Result<Json<Vec<Post>>, StatusCode> {
     let posts = sqlx::query_as!(Post, "SELECT id, title, body FROM posts")
         .fetch_all(&pool)
@@ -39,7 +42,7 @@ async fn main() -> Result<(), sqlx::Error> {
     tracing_subscriber::fmt()
         .with_max_level(Level::INFO)
         .init();
-    
+
     dotenv().ok();
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = PgPoolOptions::new().connect(&url).await?;
@@ -49,6 +52,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let app = Router::new()
         // get goes to root
         .route("/", get(root));
+        .route("/posts/:id", get(get_posts));
         // axum extension layer
         .layer(Extension(pool));
 
