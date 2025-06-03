@@ -26,6 +26,14 @@ struct CreatePost {
     user_id: Option<i32>,
 }
 
+// create update struct
+#[derive(Serialize, Deserialize)]
+struct UpdatePost {
+    title: String,
+    body: String,
+    user_id: Option<i32>,
+}
+
 // handler for get all posts
 async fn get_posts(
     Extension(pool): Extension<Pool<Postgres>>
@@ -38,7 +46,7 @@ async fn get_posts(
     Ok(Json(posts))
 }
 
-//create POST handler, which will have the same route of /posts/
+//create POST handler, which will have the same endpoint of /posts/
 async fn create_post(
     Extension(pool): Extension<Pool<Postgres>>,
     Json(new_post): Json<CreatePost>,
@@ -55,6 +63,29 @@ async fn create_post(
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(post))
+}
+
+// creating update handler, which will have the same endpoint of posts/:id 
+async fn update_post(
+    Extension(pool): Extension<pool<Postgres>>,
+    Path(id): Path<i32>,
+    Json(updated_post): Json<UpdatePost>,
+) -> Result<Json<Post>, StatusCode>{
+    let post = sqlx::query_as!(
+        Post,
+        "UPDATE posts SET title = $1, body = $2, user_id = $3 WHERE id = $4 RETURNING id, user_id, title, body"
+        updated_post.title,
+        updated_post.body,
+        updated_post.user_id,
+        id
+    )
+    .fetch_one(&pool)
+    .await;
+
+    match post{
+        Ok(post) => Ok(Json(post)),
+        Error(_) => Error(StatusCode::NOT_FOUND),
+    }
 }
 
 // handler for get one post
@@ -88,7 +119,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let app = Router::new()
         // the posts endpoint will have both a GET request, and POST request
         .route("/posts", get(get_posts).post(create_post));
-        .route("/posts/:id", get(get_one_post));
+        .route("/posts/:id", get(get_one_post).put(update_post));
         // axum extension layer
         .layer(Extension(pool));
 
