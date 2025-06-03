@@ -34,6 +34,12 @@ struct UpdatePost {
     user_id: Option<i32>,
 }
 
+// create message struct
+#[derive(Serialize)]
+struct Message {
+    message: String,
+}
+
 // handler for get all posts
 async fn get_posts(
     Extension(pool): Extension<Pool<Postgres>>
@@ -67,7 +73,7 @@ async fn create_post(
 
 // creating update handler, which will have the same endpoint of posts/:id 
 async fn update_post(
-    Extension(pool): Extension<pool<Postgres>>,
+    Extension(pool): Extension<Pool<Postgres>>,
     Path(id): Path<i32>,
     Json(updated_post): Json<UpdatePost>,
 ) -> Result<Json<Post>, StatusCode>{
@@ -88,6 +94,24 @@ async fn update_post(
     }
 }
 
+// create delete handler,it should be the same endpoint as posts/:id
+async fn delete_post(
+    Extension(pool): Extension<Pool<Postgres>>,
+    Path(id):Path<i32>,
+) -> Result<Json<serde_json::Value>, StatusCode>{
+    let result = sqlx::query!("DELETE FROM posts WHERE id = $1", id)
+        .execute(&pool)
+        .await
+
+    match result {
+        Ok(_) => Ok(Json(serde_json::json! ({
+            "message": "Post deleted successfully"
+        }))),
+        Err(_) => Err(StatusCode::NOT_FOUND),
+    }
+
+}
+
 // handler for get one post
 async fn get_one_post(
     Extension(pool): Extension<Pool<Postgres>>,
@@ -95,10 +119,12 @@ async fn get_one_post(
 ) -> Result<Json<Post>, StatusCode> {
     let one_post = sqlx::query_as!(
         Post,
-        "SELECT id, user_id, title, body FROM posts WHERE id = $1")
-        .fetch_one(&pool)
-        .await
-        .map_err(|_| StatusCode::NOT_FOUND)?;
+        "SELECT id, user_id, title, body FROM posts WHERE id = $1",
+        id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|_| StatusCode::NOT_FOUND)?;
 
     Ok(Json(one_post))
 }
@@ -119,7 +145,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let app = Router::new()
         // the posts endpoint will have both a GET request, and POST request
         .route("/posts", get(get_posts).post(create_post));
-        .route("/posts/:id", get(get_one_post).put(update_post));
+        .route("/posts/:id", get(get_one_post).put(update_post).delete(delete_post));
         // axum extension layer
         .layer(Extension(pool));
 
