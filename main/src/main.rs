@@ -5,8 +5,34 @@ use axum::{
     Router,
 };
 use tracing::{info, Level};
-use tracing_subscriber;
- 
+use tracing_subscriber; 
+
+#[derive(Serialize, Deserialize)]
+struct Post {
+    id: i32,
+    user_id: Option<i32>,
+    title: String,
+    body: String,
+}
+
+
+// handler for GET
+async fn root() -> &'static str {
+    "hello, world"
+}
+
+// handler for get posts
+async fn get_posts(
+    Extension(pool): Extension<Pool<Postgres>>
+) -> Result<Json<Vec<Post>>, StatusCode> {
+    let posts = sqlx::query_as!(Post, "SELECT id, title, body FROM posts")
+        .fetch_all(&pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(posts))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     //let's initializa the tracing, to log info
@@ -35,26 +61,3 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-// handler for GET
-async fn root() -> &'static str {
-    "hello, world"
-}
-
-#[derive(Serialize, Deserialize)]
-struct Post {
-    id: i32,
-    user_id: Option<i32>,
-    title: String,
-    body: String,
-}
-
-async fn get_posts(
-    Extension(pool): Extension<Pool<Postgres>>
-) -> Result<Json<Vec<Post>>, StatusCode> {
-    let posts = sqlx::query_as!(Post, "SELECT id, title, body FROM posts")
-        .fetch_all(&pool)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    Ok(Json(posts))
-}
