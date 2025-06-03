@@ -17,16 +17,9 @@ struct Post {
     body: String,
 }
 
-
-// handler for GET
-async fn root() -> &'static str {
-    "hello, world"
-}
-
-// handler for get posts
+// handler for get all posts
 async fn get_posts(
-    Extension(pool): Extension<Pool<Postgres>>,
-    Path(id): Path<i32>,
+    Extension(pool): Extension<Pool<Postgres>>
 ) -> Result<Json<Vec<Post>>, StatusCode> {
     let posts = sqlx::query_as!(Post, "SELECT id, title, body FROM posts")
         .fetch_all(&pool)
@@ -34,6 +27,21 @@ async fn get_posts(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(posts))
+}
+
+// handler for get one post
+async fn get_one_post(
+    Extension(pool): Extension<Pool<Postgres>>,
+    Path(id): Path<i32>,
+) -> Result<Json<Post>, StatusCode> {
+    let one_post = sqlx::query_as!(
+        Post,
+        "SELECT id, user_id, title, body FROM posts WHERE id = $1")
+        .fetch_one(&pool)
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    Ok(Json(one_post))
 }
 
 #[tokio::main]
@@ -51,8 +59,8 @@ async fn main() -> Result<(), sqlx::Error> {
     // build application with router
     let app = Router::new()
         // get goes to root
-        .route("/", get(root));
-        .route("/posts/:id", get(get_posts));
+        .route("/posts", get(get_posts));
+        .route("/posts/:id", get(get_one_post));
         // axum extension layer
         .layer(Extension(pool));
 
