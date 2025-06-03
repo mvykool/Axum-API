@@ -1,0 +1,48 @@
+# === Rust build files ===
+/target/
+**/*.rs.bk
+
+# === Dependency lock files ===
+/Cargo.lock
+
+# === Backup/Temp files ===
+*.log
+*.tmp
+*.swp
+*.bak
+*.old
+*~
+
+# === OS-specific files ===
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# === IDE/Editor files ===
+# VSCode
+.vscode/
+
+# JetBrains (CLion, IntelliJ, etc.)
+.idea/
+*.iml
+
+# === Miscellaneous ===
+# Node/npm (if you also have a frontend in the same repo)
+node_modules/
+dist/
+build/
+
+# dotenv files
+.env
+.env.*
+
