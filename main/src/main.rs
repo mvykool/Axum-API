@@ -40,6 +40,38 @@ struct Message {
     message: String,
 }
 
+// user structs
+#[derive(Serialize, Deserialize)]
+struct CreateUser {
+    username: String,
+    email: String
+}
+
+#[derive(Serialize, Deserialize)]
+struct User {
+    id: i32,
+    username: String,
+    email: String
+}
+
+// handle user with POST request 
+async fn create_user(
+    Extension(pool): Extension<Pool<Postgres>>,
+    Json(new_user): Json<CreateUser>,
+) -> Result<Json<User>, StatusCode> {
+    let user = sqlx::query_as!(
+        User,
+        "INSERT INTO users (username, email) VALUES ($1, $2) RETURNING id, username, email",
+        new_user.username,
+        new_user.email
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(user))
+}
+
 // handler for get all posts
 async fn get_posts(
     Extension(pool): Extension<Pool<Postgres>>
@@ -143,6 +175,8 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // build application with router
     let app = Router::new()
+        //endpoint for users
+        .route("/users", post(create_user));
         // the posts endpoint will have both a GET request, and POST request
         .route("/posts", get(get_posts).post(create_post));
         .route("/posts/:id", get(get_one_post).put(update_post).delete(delete_post));
