@@ -48,6 +48,10 @@ impl SpotifyService {
             ));
         }
 
+        if !response.status().is_success() {
+            return Err(AppError::Config("Missing token".to_string()));
+        }
+
         let token_response: TokenResponse = response.json().await?;
         Ok(token_response.access_token)
     }
